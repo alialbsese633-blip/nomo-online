@@ -23,8 +23,62 @@ async function sendWhatsAppNotification(data) {
   try {
     await fetch(url);
   } catch (err) {
-    // Notification failures must never block saving the lead.
     console.error("CallMeBot WhatsApp notification failed:", err);
+  }
+}
+
+async function sendEmailNotification(data) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const to = process.env.NOTIFY_EMAIL;
+  if (!apiKey || !to) return;
+
+  const rows = [
+    ["الاسم", data.name],
+    ["اسم المنشأة", data.company],
+    ["الدولة والمدينة", data.location],
+    ["نوع المنشأة", data.type],
+    ["عدد الغرف/الوحدات", data.units],
+    ["رقم واتساب", data.whatsapp],
+    ["البريد الإلكتروني", data.email],
+    ["الموقع الإلكتروني", data.website],
+    ["رابط Booking.com", data.booking_url],
+    ["الخدمة المطلوبة", data.service],
+    ["المشكلة الرئيسية", data.problem],
+  ].filter(([, v]) => v);
+
+  const html = `
+    <div style="font-family:sans-serif;direction:rtl;text-align:right;">
+      <h2>طلب جديد من موقع نمو أونلاين</h2>
+      <table cellpadding="8" style="border-collapse:collapse;">
+        ${rows
+          .map(
+            ([label, value]) =>
+              `<tr><td style="font-weight:bold;border:1px solid #ddd;">${label}</td><td style="border:1px solid #ddd;">${value}</td></tr>`
+          )
+          .join("")}
+      </table>
+    </div>
+  `;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "Nomo Online <onboarding@resend.dev>",
+        to: [to],
+        subject: `طلب جديد من ${data.company}`,
+        html,
+      }),
+    });
+    if (!res.ok) {
+      console.error("Resend email failed:", res.status, await res.text());
+    }
+  } catch (err) {
+    console.error("Resend email notification failed:", err);
   }
 }
 
@@ -68,12 +122,14 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: "db_insert_failed" }, { status: 500 });
     }
 
-    // Must be awaited: on Vercel's serverless runtime, the function
-    // can be frozen the instant a response is returned, which kills
-    // any request still in flight. A failure here is caught inside
-    // sendWhatsAppNotification and never turns into an error for the
-    // visitor — the lead is already saved above regardless.
-    await sendWhatsAppNotification(data);
+    // Both notification channels are awaited (Vercel can freeze the
+    // function the instant a response is returned) and each fails
+    // silently on its own — the lead is already saved above, so a
+    // notification failure must never turn into an error for the visitor.
+    await Promise.allSettled([
+      sendWhatsAppNotification(data),
+      sendEmailNotification(data),
+    ]);
 
     return NextResponse.json({ ok: true });
   } catch (err) {
