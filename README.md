@@ -25,10 +25,18 @@ All page text lives in `lib/dictionaries.js`, one object per language
 (`HOME`, `SERVICES`, `ABOUT`, `CONTACT`). Edit the strings there to change
 site copy — no other file needs to change.
 
+## Environment variables
+
+The contact form needs a Supabase project with a `leads` table (see
+`.env.local.example` for the two variables required, and copy it to
+`.env.local` for local development). The same two variables must be
+added in the Vercel project's Environment Variables settings for the
+live site.
+
 ## Status
 
 - [x] Static pages, 4 languages
-- [ ] Contact form is not yet connected to a database (see the TODO in
-      `app/api/contact/route.js`) — submissions are currently only logged,
-      not stored
+- [x] Contact form saves to Supabase (`leads` table)
 - [ ] Analytics (GA4 / Meta Pixel) not yet added
+- [ ] Custom domain (nomo.om) not yet connected
+- [ ] hello@nomo.om email not yet set up

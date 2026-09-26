@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabaseClient";
 
-// TODO: this currently only logs the submission on the server.
-// The next step in the project plan is to connect this route to
-// Supabase so submissions are stored permanently and an email
-// notification is sent. Until then, submitted leads are NOT saved
-// anywhere — check the WhatsApp button as the reliable channel.
 export async function POST(request) {
   try {
     const data = await request.json();
@@ -16,7 +12,34 @@ export async function POST(request) {
       );
     }
 
-    console.log("New Nomo Online lead:", data);
+    if (!supabase) {
+      console.error(
+        "Supabase env vars are missing — set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
+      );
+      return NextResponse.json(
+        { ok: false, error: "database_not_configured" },
+        { status: 500 }
+      );
+    }
+
+    const { error } = await supabase.from("leads").insert({
+      name: data.name,
+      company: data.company,
+      location: data.location || null,
+      type: data.type || null,
+      units: data.units || null,
+      whatsapp: data.whatsapp || null,
+      email: data.email,
+      website: data.website || null,
+      booking_url: data.booking_url || null,
+      service: data.service || null,
+      problem: data.problem || null,
+    });
+
+    if (error) {
+      console.error("Supabase insert error:", error);
+      return NextResponse.json({ ok: false, error: "db_insert_failed" }, { status: 500 });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
