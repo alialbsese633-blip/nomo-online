@@ -68,9 +68,12 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: "db_insert_failed" }, { status: 500 });
     }
 
-    // Fire-and-forget: the lead is already saved, so a notification
-    // failure here should never turn into an error for the visitor.
-    sendWhatsAppNotification(data);
+    // Must be awaited: on Vercel's serverless runtime, the function
+    // can be frozen the instant a response is returned, which kills
+    // any request still in flight. A failure here is caught inside
+    // sendWhatsAppNotification and never turns into an error for the
+    // visitor — the lead is already saved above regardless.
+    await sendWhatsAppNotification(data);
 
     return NextResponse.json({ ok: true });
   } catch (err) {
