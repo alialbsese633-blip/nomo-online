@@ -1,6 +1,33 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
 
+async function sendWhatsAppNotification(data) {
+  const phone = process.env.WHATSAPP_NOTIFY_PHONE;
+  const apikey = process.env.WHATSAPP_NOTIFY_APIKEY;
+  if (!phone || !apikey) return;
+
+  const lines = [
+    "*طلب جديد - نمو أونلاين*",
+    `الاسم: ${data.name}`,
+    `المنشأة: ${data.company}`,
+    data.location ? `الموقع: ${data.location}` : null,
+    data.whatsapp ? `واتساب: ${data.whatsapp}` : null,
+    `الإيميل: ${data.email}`,
+    data.service ? `الخدمة: ${data.service}` : null,
+    data.problem ? `المشكلة: ${data.problem}` : null,
+  ].filter(Boolean);
+
+  const text = encodeURIComponent(lines.join("\n"));
+  const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${text}&apikey=${apikey}`;
+
+  try {
+    await fetch(url);
+  } catch (err) {
+    // Notification failures must never block saving the lead.
+    console.error("CallMeBot WhatsApp notification failed:", err);
+  }
+}
+
 export async function POST(request) {
   try {
     const data = await request.json();
@@ -40,6 +67,10 @@ export async function POST(request) {
       console.error("Supabase insert error:", error);
       return NextResponse.json({ ok: false, error: "db_insert_failed" }, { status: 500 });
     }
+
+    // Fire-and-forget: the lead is already saved, so a notification
+    // failure here should never turn into an error for the visitor.
+    sendWhatsAppNotification(data);
 
     return NextResponse.json({ ok: true });
   } catch (err) {

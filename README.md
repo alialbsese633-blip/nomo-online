@@ -37,6 +37,7 @@ live site.
 
 - [x] Static pages, 4 languages
 - [x] Contact form saves to Supabase (`leads` table)
+- [x] WhatsApp notification on new lead (via CallMeBot, see `.env.local.example`)
 - [ ] Analytics (GA4 / Meta Pixel) not yet added
-- [ ] Custom domain (nomo.om) not yet connected
-- [ ] hello@nomo.om email not yet set up
+- [ ] Custom domain not yet connected (nomoonline.com purchased, not yet linked)
+- [ ] Official email not yet set up
